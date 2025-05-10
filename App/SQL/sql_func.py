@@ -1,11 +1,18 @@
 from service import *
-
-def add_data(table_name,*keys):
+from multipledispatch import dispatch
+def add_all_data(table_name,*keys):
     s=', '.join(['?'] * len(keys))
     sql = f"INSERT INTO {table_name} VALUES ({s})"
     sql_exec(sql,keys)
     return 
 
+def add_data(table_name,dic):
+    column = ','.join(dic.keys())
+    value = ','.join(dic.values())
+    sql = f"INSERT INTO {table_name} ({column}) VALUES ({value})"
+    sql_exec(sql)
+    return 
+    
 def delete_data(table_name,condition=''):
     if condition:
         sql=f'DELETE FORM {table_name} WHERE {condition}'
@@ -17,12 +24,17 @@ def delete_data(table_name,condition=''):
 def update_data(table_name,dic,condition=''):
     s=''
     for k,v in dic.items():
+        if type(k)!='string':
+            k=str(k)
+        if type(v)!='string':
+            v=str(v)
         s=s+k+'='+v+','
     s=s[:len(s)-1]
     if condition:
         sql=f'UPDATE {table_name} SET {s} where {condition}'
     else:
         sql=f'UPDATE {table_name} SET {s}'
+    sql_exec(sql)
     return 
 
 def select(table_names,select_goals=None,condition=None,sort=None,reverse=False,max_len=10,connect=None,params=None):
@@ -53,9 +65,8 @@ def select(table_names,select_goals=None,condition=None,sort=None,reverse=False,
         return query2(sql)
 
 if __name__ == '__main__':
-    add_data("users",1,'1','123')
-    add_data("users",2,'3','1234')
-
+    add_data("users",{'name':'5','password':'1234'})
+    update_data("users",{'name':3},'password=1234')
 
     result=select(['users'],['name','password'],"password=\'1234\'")
 
