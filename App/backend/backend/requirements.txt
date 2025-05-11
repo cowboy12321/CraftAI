@@ -1,1 +1,7 @@
  # 项目依赖
+flask              # Flask Web 框架
+flask-cors         # 解决前后端跨域问题
+werkzeug           # 用于安全处理上传文件名
+pillow             # 处理图片保存和格式转换
+ultralytics        # YOLOv11 模型库
+opencv-python      # 图像处理库（可选）
