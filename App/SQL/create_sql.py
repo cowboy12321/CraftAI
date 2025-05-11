@@ -6,7 +6,7 @@ cursor = conn.cursor()
 
 #创建管理员库
 cursor.execute("DROP TABLE IF EXISTS admins")
-cursor.excute('''
+cursor.execute('''
 CREATE TABLE admin(
     admin_id INTEGER PRIMARY KEY ,
     name TEXT UNIQUE NOT NULL,
