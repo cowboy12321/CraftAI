@@ -1,36 +1,31 @@
-import sqlite3
-import os
+from datetime import datetime
+from .base import db, BaseModel
 
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'SQL', 'JiangZhi.db')
+class User(BaseModel):
+    __tablename__ = 'users'
+    user_id = db.Column(db.Integer, primary_key=True)  # 明确指定user_id
+    name = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(120), nullable=False)
+    pictures = db.relationship('Picture', backref='user', lazy=True)
 
-def save_picture(user_id, image_path, processed_path, result_summary, material_lost):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    try:
-        cursor.execute('''
-            INSERT INTO pictures (user_id, img_path, processed_path, result_summary, material_lost)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (user_id, image_path, processed_path, result_summary, int(material_lost)))
-        conn.commit()
-        return True
-    except Exception as e:
-        print("Error saving picture:", e)
-        conn.rollback()
-        return False
-    finally:
-        cursor.close()
-        conn.close()
+class Admin(BaseModel):
+    __tablename__ = 'admins'
+    name = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(120), nullable=False)
 
-def get_user_by_name(name):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    try:
-        cursor.execute('SELECT * FROM users WHERE name = ?', (name,))
-        result = cursor.fetchone()
-        return result
-    except Exception as e:
-        print("Error getting user:", e)
-        return None
-    finally:
-        cursor.close()
-        conn.close()
+class Picture(BaseModel):
+    __tablename__ = 'pictures'
+    pic_id = db.Column(db.Integer, primary_key=True)  # 明确指定pic_id
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    img_path = db.Column(db.String(255), unique=True, nullable=False)
+    processed_path = db.Column(db.String(255), unique=True, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    result_summary = db.Column(db.Text)
+    material_lost = db.Column(db.Boolean, default=False, nullable=False)
+    material_details = db.relationship('MaterialLostPic', backref='picture', uselist=False)
+
+class MaterialLostPic(BaseModel):
+    __tablename__ = 'material_lost_pic'
+    pic_id = db.Column(db.Integer, db.ForeignKey('pictures.pic_id'), nullable=False)
+    severity = db.Column(db.Float)  # 新增严重程度字段
+    coordinates = db.Column(db.JSON)  # 存储坐标信息
