@@ -1,13 +1,15 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import uuid
 from datetime import datetime
 from ..services.model_runner import DefectDetector
-from ..models.defect import db, User, Picture, MaterialLostPic  # 正确导入模型
+from ..models.defect import db, User, Picture, MaterialLostPic
 
-bp = Blueprint('defect', __name__)
-detector = DefectDetector(model_path=r"E:\CraftAI app\CraftAI\App\backend\backend\app\models\best.pt")
+
+bp = Blueprint('api', __name__, url_prefix='/api')
+detector = DefectDetector(model_path=r".\app\models\best.pt")
 
 # 设置图片保存路径
 RAW_UPLOAD_FOLDER = 'static/upload/raw'
@@ -20,8 +22,38 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg'}
 
 
-@bp.route('/predict', methods=['POST'])
+@bp.route('/login', methods=['POST'])
+def login():
+    """用户登录接口"""
+    data = request.get_json()
+    if not data or 'username' not in data or 'password' not in data:
+        return jsonify({'error': '缺少用户名或密码'}), 400
+
+    user = User.query.filter_by(username=data['username']).first()
+    if not user or not check_password_hash(user.password, data['password']):
+        return jsonify({'error': '用户名或密码错误'}), 401
+
+    return jsonify({
+        'success': True,
+        'user_id': user.id,
+        'username': user.username,
+        'message': '登录成功'
+    })
+
+
+@bp.route('/predict', methods=['POST', 'GET'])
 def predict_defect():
+    """图片预测接口（保留GET方法）"""
+    if request.method == 'GET':
+        return jsonify({
+            'message': '请使用POST方法上传图片',
+            'required_fields': {
+                'file': '图片文件',
+                'user_id': '用户ID'
+            }
+        })
+
+    # POST方法处理
     if 'file' not in request.files or 'user_id' not in request.form:
         return jsonify({'error': '缺少文件或用户 ID'}), 400
 
@@ -61,7 +93,7 @@ def predict_defect():
         db.session.add(picture)
         db.session.flush()  # 让 picture.pic_id 可用（但不提交）
 
-        # 如果有缺失，写入 MaterialLostPic 表（可扩展）
+        # 如果有缺失，写入 MaterialLostPic 表
         if has_material_lost:
             material_info = _extract_material_info(boxes)
             material_pic = MaterialLostPic(
@@ -105,7 +137,7 @@ def _parse_boxes(boxes):
 
 
 def _extract_material_info(boxes):
-    """提取缺失材料的严重程度与坐标（示例逻辑）"""
+    """提取缺失材料的严重程度与坐标"""
     material_boxes = [box for box in boxes if int(box[5]) == 1]
     severity = sum(float(box[4]) for box in material_boxes) / (len(material_boxes) or 1)
     coordinates = _parse_boxes(material_boxes)
