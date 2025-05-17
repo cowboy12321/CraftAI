@@ -1,20 +1,32 @@
-from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 
-db = SQLAlchemy()
+def define_models(db):
+    # 避免重复定义，使用单例模式
+    if not hasattr(db, '_user_model'):
+        class User(db.Model):
+            __tablename__ = 'user'
+            __table_args__ = {'extend_existing': True}
+            id = db.Column(db.Integer, primary_key=True)
+            username = db.Column(db.String(80), unique=True, nullable=False)
+            password = db.Column(db.String(256), nullable=False)
+        db._user_model = User
+    else:
+        User = db._user_model
 
+    if not hasattr(db, '_detection_model'):
+        class Detection(db.Model):
+            __tablename__ = 'detection'
+            __table_args__ = {'extend_existing': True}
+            id = db.Column(db.Integer, primary_key=True)
+            user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+            image_url = db.Column(db.String(255), nullable=False)
+            material_lost = db.Column(db.Boolean, nullable=False)
+            severity = db.Column(db.String(50))
+            coordinates = db.Column(db.Text)
+            summary = db.Column(db.Text)
+            timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+        db._detection_model = Detection
+    else:
+        Detection = db._detection_model
 
-class BaseModel(db.Model):
-    __abstract__ = True
-    id = db.Column(db.Integer, primary_key=True)
-
-    def save(self):
-        db.session.add(self)
-        db.session.commit()
-
-    @classmethod
-    def get(cls, id):
-        return cls.query.get(id)
-
-    def delete(self):
-        db.session.delete(self)
-        db.session.commit()
+    return User, Detection

@@ -1,55 +1,21 @@
-import sqlite3
-import os
+from App.backend.backend.app import create_app
+from App.backend.backend.app.models.base import define_models
+import logging
 
-db_path = os.path.join(os.path.dirname(__file__), 'JiangZhi.db')
-conn = sqlite3.connect(db_path)
-cursor = conn.cursor()
+logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='a', format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# 管理员表
-cursor.execute("DROP TABLE IF EXISTS admin")
-cursor.execute('''
-CREATE TABLE admin (
-    admin_id INTEGER PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL
-)
-''')
+def init_db():
+    app = create_app()
+    db = app.db
+    User, Detection = define_models(db)
+    with app.app_context():
+        try:
+            logger.info("数据库初始化完成（使用现有表）")
+            print("Database initialization completed (using existing tables)")
+        except Exception as e:
+            logger.error(f"数据库初始化失败: {str(e)}")
+            raise
 
-# 用户表
-cursor.execute("DROP TABLE IF EXISTS users")
-cursor.execute('''
-CREATE TABLE users (
-    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL
-)
-''')
-
-# 图像表
-cursor.execute("DROP TABLE IF EXISTS pictures")
-cursor.execute('''
-CREATE TABLE pictures (
-    pic_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    img_path TEXT NOT NULL UNIQUE,
-    processed_path TEXT NOT NULL UNIQUE,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    result_summary TEXT,
-    material_lost BOOLEAN DEFAULT FALSE NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-)
-''')
-
-# 材料缺失图像表
-cursor.execute("DROP TABLE IF EXISTS material_lost_pic")
-cursor.execute('''
-CREATE TABLE material_lost_pic (
-    material_lost_pic_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    pic_id INTEGER NOT NULL,
-    FOREIGN KEY (pic_id) REFERENCES pictures(pic_id) ON DELETE CASCADE
-)
-''')
-
-conn.commit()
-conn.close()
-print("数据库初始化完成：JiangZhi.db 已创建")
+if __name__ == '__main__':
+    init_db()

@@ -1,11 +1,9 @@
 import os
-from pathlib import Path
-
 
 class Config:
-    BASE_DIR = Path(r"E:\CraftAI app\CraftAI\App\backend\backend\app")
-    SQLALCHEMY_DATABASE_URI = f"sqlite:///{BASE_DIR / 'SQL' / 'JiangZhi.db'}"
+    SECRET_KEY = os.getenv('SECRET_KEY', 'default-secret-key')
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql://postgres:123456@localhost:5432/jiangzhi')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    UPLOAD_FOLDER = BASE_DIR / 'static' / 'uploads'
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
-
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'default-jwt-secret-key')
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Uploads')
+    BASE_URL = 'http://127.0.0.1:5000'

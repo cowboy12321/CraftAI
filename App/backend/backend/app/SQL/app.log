@@ -1,0 +1,69 @@
+2025-05-17 14:40:36,705 - INFO - Flask 扩展初始化成功
+2025-05-17 14:40:38,157 - DEBUG - matplotlib data path: E:\anaconda3\envs\yolov11\Lib\site-packages\matplotlib\mpl-data
+2025-05-17 14:40:38,167 - DEBUG - CONFIGDIR=C:\Users\ASUS\.matplotlib
+2025-05-17 14:40:38,168 - DEBUG - interactive is False
+2025-05-17 14:40:38,168 - DEBUG - platform is win32
+2025-05-17 14:40:38,259 - DEBUG - CACHEDIR=C:\Users\ASUS\.matplotlib
+2025-05-17 14:40:38,261 - DEBUG - Using fontManager instance from C:\Users\ASUS\.matplotlib\fontlist-v390.json
+2025-05-17 14:40:39,510 - DEBUG - 尝试连接数据库: postgresql://postgres:123456@localhost:5432/jiangzhi
+2025-05-17 14:40:39,549 - INFO - 数据库连接成功
+2025-05-17 14:40:39,549 - DEBUG - 尝试创建数据库表
+2025-05-17 14:40:39,610 - INFO - 数据库表创建成功
+2025-05-17 15:22:13,455 - INFO - Flask 扩展初始化成功
+2025-05-17 15:22:14,924 - DEBUG - matplotlib data path: E:\anaconda3\envs\yolov11\Lib\site-packages\matplotlib\mpl-data
+2025-05-17 15:22:14,934 - DEBUG - CONFIGDIR=C:\Users\ASUS\.matplotlib
+2025-05-17 15:22:14,935 - DEBUG - interactive is False
+2025-05-17 15:22:14,935 - DEBUG - platform is win32
+2025-05-17 15:22:15,025 - DEBUG - CACHEDIR=C:\Users\ASUS\.matplotlib
+2025-05-17 15:22:15,028 - DEBUG - Using fontManager instance from C:\Users\ASUS\.matplotlib\fontlist-v390.json
+2025-05-17 15:22:35,022 - INFO - Flask 扩展初始化成功
+2025-05-17 15:22:36,464 - DEBUG - matplotlib data path: E:\anaconda3\envs\yolov11\Lib\site-packages\matplotlib\mpl-data
+2025-05-17 15:22:36,473 - DEBUG - CONFIGDIR=C:\Users\ASUS\.matplotlib
+2025-05-17 15:22:36,475 - DEBUG - interactive is False
+2025-05-17 15:22:36,475 - DEBUG - platform is win32
+2025-05-17 15:22:36,565 - DEBUG - CACHEDIR=C:\Users\ASUS\.matplotlib
+2025-05-17 15:22:36,567 - DEBUG - Using fontManager instance from C:\Users\ASUS\.matplotlib\fontlist-v390.json
+2025-05-17 15:22:37,788 - DEBUG - 尝试连接数据库: postgresql://postgres:123456@localhost:5432/jiangzhi
+2025-05-17 15:22:37,826 - INFO - 数据库连接成功
+2025-05-17 15:22:37,826 - DEBUG - 尝试创建数据库表
+2025-05-17 15:22:37,872 - INFO - 数据库表创建成功
+2025-05-17 15:26:56,661 - INFO - Flask 扩展初始化成功
+2025-05-17 15:28:36,703 - INFO - Flask 扩展初始化成功
+2025-05-17 15:28:38,321 - DEBUG - matplotlib data path: E:\anaconda3\envs\yolov11\Lib\site-packages\matplotlib\mpl-data
+2025-05-17 15:28:38,332 - DEBUG - CONFIGDIR=C:\Users\ASUS\.matplotlib
+2025-05-17 15:28:38,333 - DEBUG - interactive is False
+2025-05-17 15:28:38,333 - DEBUG - platform is win32
+2025-05-17 15:28:38,425 - DEBUG - CACHEDIR=C:\Users\ASUS\.matplotlib
+2025-05-17 15:28:38,427 - DEBUG - Using fontManager instance from C:\Users\ASUS\.matplotlib\fontlist-v390.json
+2025-05-17 15:30:43,580 - INFO - Flask 扩展初始化成功
+2025-05-17 15:30:45,030 - DEBUG - matplotlib data path: E:\anaconda3\envs\yolov11\Lib\site-packages\matplotlib\mpl-data
+2025-05-17 15:30:45,040 - DEBUG - CONFIGDIR=C:\Users\ASUS\.matplotlib
+2025-05-17 15:30:45,041 - DEBUG - interactive is False
+2025-05-17 15:30:45,041 - DEBUG - platform is win32
+2025-05-17 15:30:45,133 - DEBUG - CACHEDIR=C:\Users\ASUS\.matplotlib
+2025-05-17 15:30:45,136 - DEBUG - Using fontManager instance from C:\Users\ASUS\.matplotlib\fontlist-v390.json
+2025-05-17 15:30:46,374 - DEBUG - 尝试连接数据库: postgresql://postgres:123456@localhost:5432/jiangzhi
+2025-05-17 15:30:46,412 - INFO - 数据库连接成功
+2025-05-17 15:30:46,412 - DEBUG - 尝试创建数据库表
+2025-05-17 15:30:46,457 - INFO - 数据库表创建成功
+2025-05-17 15:35:01,695 - INFO - Flask 扩展初始化成功
+2025-05-17 15:35:03,152 - DEBUG - matplotlib data path: E:\anaconda3\envs\yolov11\Lib\site-packages\matplotlib\mpl-data
+2025-05-17 15:35:03,162 - DEBUG - CONFIGDIR=C:\Users\ASUS\.matplotlib
+2025-05-17 15:35:03,163 - DEBUG - interactive is False
+2025-05-17 15:35:03,163 - DEBUG - platform is win32
+2025-05-17 15:35:03,262 - DEBUG - CACHEDIR=C:\Users\ASUS\.matplotlib
+2025-05-17 15:35:03,264 - DEBUG - Using fontManager instance from C:\Users\ASUS\.matplotlib\fontlist-v390.json
+2025-05-17 15:35:04,541 - DEBUG - 尝试连接数据库: postgresql://postgres:123456@localhost:5432/jiangzhi
+2025-05-17 15:35:04,579 - INFO - 数据库连接成功
+2025-05-17 15:35:04,579 - DEBUG - 尝试创建数据库表
+2025-05-17 15:35:04,622 - INFO - 数据库表创建成功
+2025-05-17 15:38:03,492 - INFO - Flask 扩展初始化成功
+2025-05-17 15:38:04,923 - DEBUG - matplotlib data path: E:\anaconda3\envs\yolov11\Lib\site-packages\matplotlib\mpl-data
+2025-05-17 15:38:04,933 - DEBUG - CONFIGDIR=C:\Users\ASUS\.matplotlib
+2025-05-17 15:38:04,934 - DEBUG - interactive is False
+2025-05-17 15:38:04,934 - DEBUG - platform is win32
+2025-05-17 15:38:05,024 - DEBUG - CACHEDIR=C:\Users\ASUS\.matplotlib
+2025-05-17 15:38:05,027 - DEBUG - Using fontManager instance from C:\Users\ASUS\.matplotlib\fontlist-v390.json
+2025-05-17 15:38:06,312 - DEBUG - 尝试连接数据库: postgresql://postgres:123456@localhost:5432/jiangzhi
+2025-05-17 15:38:06,350 - INFO - 数据库连接成功
+2025-05-17 15:38:06,350 - INFO - 数据库初始化完成（使用现有表）

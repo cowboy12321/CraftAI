@@ -1,36 +1,26 @@
-from sqlalchemy.exc import SQLAlchemyError
-from ..models.base import db
+from flask import current_app
+from App.backend.backend.app.models.base import define_models
+import logging
 
-class DatabaseService:
-    @staticmethod
-    def create_picture_record(user_id, prediction_result):
-        """创建完整的检测记录"""
-        try:
-            # 创建主记录
-            new_picture = Picture(
-                user_id=user_id,
-                img_path=prediction_result["raw_path"],
-                processed_path=prediction_result["result_path"],
-                material_lost=prediction_result["material_lost"],
-                result_summary=str(prediction_result["defects"])
-            )
-            new_picture.save()
+logger = logging.getLogger(__name__)
 
-            # 如果存在材料缺失，创建详细记录
-            if prediction_result["material_lost"]:
-                main_defect = next(
-                    (d for d in prediction_result["defects"] if d["class"] == "material_lost"),
-                    None
-                )
-                if main_defect:
-                    MaterialLostPic(
-                        pic_id=new_picture.id,
-                        severity=main_defect["confidence"],
-                        coordinates=main_defect["coordinates"]
-                    ).save()
-
-            return new_picture
-        except SQLAlchemyError as e:
-            db.session.rollback()
-            print(f"数据库操作失败: {str(e)}")
-            return None
+def save_detection(user_id, image_url, results, summary):
+    db = current_app.db
+    _, Detection = define_models(db)
+    try:
+        detection = Detection(
+            user_id=user_id,
+            image_url=image_url,
+            material_lost=results.get('material_lost', False),
+            severity=results.get('severity', 'N/A'),
+            coordinates=str(results.get('coordinates', {})),
+            summary=summary
+        )
+        db.session.add(detection)
+        db.session.commit()
+        logger.info(f"检测记录保存成功：user_id={user_id}")
+        return detection
+    except Exception as e:
+        logger.error(f"保存检测记录失败：{str(e)}")
+        db.session.rollback()
+        raise

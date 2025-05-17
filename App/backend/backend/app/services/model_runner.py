@@ -1,64 +1,29 @@
-import cv2
-from pathlib import Path
 from ultralytics import YOLO
-import uuid
-from datetime import datetime
-from ..models.defect import Picture, MaterialLostPic, db
+import os
 
 
-class DefectDetector:
-    def __init__(self, model_path='best.pt'):
-        self.model = YOLO(model_path)
-        self.class_names = self.model.names  # 获取类别名称字典
+def run_yolo(image_path):
+    model = YOLO(os.path.join(os.path.dirname(__file__), '../models/best.pt'))
+    results = model.predict(image_path)
 
-    def predict(self, image_path):
-        """执行预测并返回结构化结果"""
-        try:
-            # 生成唯一文件名
-            unique_id = uuid.uuid4().hex
-            raw_filename = f"{unique_id}_raw{Path(image_path).suffix}"
-            result_filename = f"{unique_id}_result.jpg"
+    # Process results (adjust based on your YOLO output)
+    material_lost = False
+    severity = 'N/A'
+    coordinates = {}
 
-            # 执行预测
-            results = self.model.predict(
-                source=image_path,
-                imgsz=640,
-                conf=0.25,
-                save=True,
-                save_txt=False,
-                show=False
-            )
-
-            # 处理第一个检测结果
-            result = results[0]
-
-            # 保存带标注的图片
-            output_dir = Path("static/results")
-            output_dir.mkdir(exist_ok=True)
-            result_path = output_dir / result_filename
-            result.save(filename=str(result_path))
-
-            # 提取检测信息
-            material_lost = False
-            defect_details = []
-            for box in result.boxes:
-                class_id = int(box.cls)
-                if self.class_names[class_id] == "material_lost":
-                    material_lost = True
-                    defect_details.append({
-                        "class": self.class_names[class_id],
-                        "confidence": float(box.conf),
-                        "coordinates": box.xyxy[0].cpu().numpy().tolist()
-                    })
-
-            return {
-                "raw_path": str(image_path),
-                "result_path": str(result_path),
-                "material_lost": material_lost,
-                "defects": defect_details,
-                "timestamp": datetime.now()
+    for result in results:
+        for box in result.boxes:
+            material_lost = True
+            severity = 'Moderate'  # Example logic
+            coordinates = {
+                'x': float(box.xyxy[0][0]),
+                'y': float(box.xyxy[0][1]),
+                'w': float(box.xyxy[0][2] - box.xyxy[0][0]),
+                'h': float(box.xyxy[0][3] - box.xyxy[0][1]),
             }
 
-        except Exception as e:
-            print(f"预测过程中发生错误: {str(e)}")
-            return None
+    return {
+        'material_lost': material_lost,
+        'severity': severity,
+        'coordinates': coordinates,
+    }
