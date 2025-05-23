@@ -10,13 +10,13 @@ import logging
 logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='a', format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+db = SQLAlchemy()
+jwt = JWTManager()
+migrate = Migrate()
+
 def create_app():
     app = Flask(__name__)
-    app.config.from_object('App.backend.backend.config.Config')
-
-    db = SQLAlchemy()
-    jwt = JWTManager()
-    migrate = Migrate()
+    app.config.from_object('config.Config')
 
     try:
         db.init_app(app)
@@ -29,16 +29,22 @@ def create_app():
         raise
 
     with app.app_context():
-        from App.backend.backend.app.models.base import define_models
-        User, Detection = define_models(db)
-        from App.backend.backend.app.routes.auth import auth_bp
-        from App.backend.backend.app.routes.defect import defect_bp
+        from .models.base import define_models
+        define_models(db)  # 初始化模型
+        from .routes.auth import auth_bp
+        from .routes.defect import defect_bp
+        from .routes.report import report_bp  # 新增报告路由
         app.register_blueprint(auth_bp, url_prefix='/api')
         app.register_blueprint(defect_bp, url_prefix='/api')
+        app.register_blueprint(report_bp, url_prefix='/api')
 
     @app.route('/Uploads/<filename>')
     def uploaded_file(filename):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+    @app.route('/Reports/<filename>')
+    def report_file(filename):
+        return send_from_directory(app.config['REPORT_FOLDER'], filename)
 
     def test_db_connection():
         try:

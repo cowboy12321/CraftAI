@@ -5,12 +5,14 @@ import 'pages/register_page.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/upload_page.dart';
 import 'pages/history_page.dart';
-import 'pages/report_page.dart';
+import 'pages/detection_page.dart';
 import 'pages/settings_page.dart';
-import 'pages/profile_page.dart';
+import 'pages/about_page.dart';
+import 'pages/report_page.dart';
 import 'providers/auth_provider.dart';
 import 'providers/detection_provider.dart';
-import 'theme/app_theme.dart';
+import 'providers/report_provider.dart';
+import 'services/gpt_service.dart';
 
 void main() {
   runApp(
@@ -18,6 +20,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => DetectionProvider()),
+        ChangeNotifierProvider(create: (_) => ReportProvider()),
       ],
       child: const CraftAIApp(),
     ),
@@ -30,31 +33,38 @@ class CraftAIApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '匠知 · 古建修复AI平台',
-      theme: AppTheme.lightTheme,
+      title: '匠知 - CraftAI',
+      theme: ThemeData(
+        primaryColor: const Color(0xFF8B4513),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF8B4513)),
+        scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+        cardTheme: CardTheme(
+          elevation: 6,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          color: Colors.white,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF8B4513),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+        useMaterial3: true,
+      ),
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
-        '/dashboard': (context) => DashboardPage(
-              userId: Provider.of<AuthProvider>(context, listen: false).userId!,
-            ),
-        '/upload': (context) => UploadPage(
-              userId: Provider.of<AuthProvider>(context, listen: false).userId!,
-            ),
-        '/history': (context) => HistoryPage(
-              userId: Provider.of<AuthProvider>(context, listen: false).userId!,
-            ),
-        '/report': (context) => ReportPage(
-              userId: Provider.of<AuthProvider>(context, listen: false).userId!,
-              detectionId: ModalRoute.of(context)!.settings.arguments as int,
-            ),
-        '/settings': (context) => SettingsPage(
-              userId: Provider.of<AuthProvider>(context, listen: false).userId!,
-            ),
-        '/profile': (context) => ProfilePage(
-              userId: Provider.of<AuthProvider>(context, listen: false).userId!,
-            ),
+        '/dashboard': (context) => const DashboardPage(),
+        '/upload': (context) => const UploadPage(),
+        '/history': (context) => const HistoryPage(),
+        '/detection': (context) => const DetectionPage(),
+        '/settings': (context) => const SettingsPage(),
+        '/report': (context) => const ReportPage(),
+        '/about': (context) => const AboutPage(),
       },
     );
   }

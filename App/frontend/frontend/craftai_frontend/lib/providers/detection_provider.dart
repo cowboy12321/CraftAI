@@ -1,93 +1,121 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
+import 'dart:io';
+import 'package:provider/provider.dart';
 import '../models/detection.dart';
+import '../models/model_config.dart';
+import '../services/api_service.dart';
+import '../providers/auth_provider.dart';
 
 class DetectionProvider with ChangeNotifier {
-  Detection? _detection;
+  final ApiService _apiService = ApiService();
   List<Detection> _history = [];
-  String? _error;
-  bool _isLoading = false;
+  List<Detection> _filteredHistory = [];
+  Detection? _currentDetection;
+  ModelConfig? _selectedModel;
+  List<String> _selectedCategories = [
+    '裂缝',
+    '变色与沉积物',
+    '表面剥落',
+    '泛碱',
+    '不当修补',
+    '生物入侵',
+    '砖缝失效',
+  ];
 
-  Detection? get detection => _detection;
   List<Detection> get history => _history;
-  String? get error => _error;
-  bool get isLoading => _isLoading;
+  List<Detection> get filteredHistory => _filteredHistory;
+  Detection? get currentDetection => _currentDetection;
+  ModelConfig? get selectedModel => _selectedModel;
+  List<String> get selectedCategories => _selectedCategories;
 
-  Future<void> uploadImage(File image, int userId) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
+  DetectionProvider() {
+    _selectedModel = ModelConfig.getAvailableModels().first;
+  }
 
-    try {
-      final response = await ApiService.uploadImage(image, userId);
-      _detection = Detection(
-        id: response['id'],
-        imageUrl: response['image_url'],
-        materialLost: response['material_lost'] ?? false,
-        severity: response['severity']?.toString() ?? 'N/A',
-        coordinates: response['coordinates']?.toString() ?? 'N/A',
-        summary: response['summary'] ?? '无摘要',
-        timestamp: response['timestamp'] ?? DateTime.now().toIso8601String(),
-      );
-      _error = null;
-    } catch (e) {
-      _error = e.toString();
-    }
-
-    _isLoading = false;
+  void setModel(ModelConfig? model) {
+    _selectedModel = model;
     notifyListeners();
   }
 
-  Future<void> fetchHistory(int userId) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      final response = await ApiService.fetchHistory(userId);
-      _history = response
-          .map<Detection>((item) => Detection(
-                id: item['id'],
-                imageUrl: item['image_url'],
-                materialLost: item['material_lost'] ?? false,
-                severity: item['severity']?.toString() ?? 'N/A',
-                coordinates: item['coordinates']?.toString() ?? 'N/A',
-                summary: item['summary'] ?? '无摘要',
-                timestamp: item['timestamp'] ?? DateTime.now().toIso8601String(),
-              ))
-          .toList();
-      _error = null;
-    } catch (e) {
-      _error = e.toString();
-    }
-
-    _isLoading = false;
+  void setCategories(List<String> categories) {
+    _selectedCategories = categories;
     notifyListeners();
   }
 
-  Future<void> fetchDetection(int detectionId) async {
-    _isLoading = true;
-    _error = null;
+  void setCurrentDetection(Detection detection) {
+    _currentDetection = detection;
     notifyListeners();
+  }
 
+  Future<void> loadHistory(BuildContext context) async {
     try {
-      final response = await ApiService.fetchDetection(detectionId);
-      _detection = Detection(
-        id: response['id'],
-        imageUrl: response['image_url'],
-        materialLost: response['material_lost'] ?? false,
-        severity: response['severity']?.toString() ?? 'N/A',
-        coordinates: response['coordinates']?.toString() ?? 'N/A',
-        summary: response['summary'] ?? '无摘要',
-        timestamp: response['timestamp'] ?? DateTime.now().toIso8601String(),
-      );
-      _error = null;
+      final token = Provider.of<AuthProvider>(context, listen: false).token;
+      if (token == null || token.isEmpty) {
+        throw Exception('未登录，请先登录');
+      }
+      _history = await _apiService.getDetectionHistory(token);
+      _filteredHistory = _history;
     } catch (e) {
-      _error = e.toString();
+      print('加载历史记录失败: $e');
+      _history = [];
+      _filteredHistory = [];
     }
+    notifyListeners();
+  }
 
-    _isLoading = false;
+  void filterHistory(String query) {
+    _filteredHistory = _history
+        .where((detection) =>
+            detection.id.toString().contains(query) || detection.timestamp.contains(query))
+        .toList();
+    notifyListeners();
+  }
+
+  Future<void> uploadSingleImage(BuildContext context, File image) async {
+    if (_selectedModel == null) throw Exception('未选择模型');
+    try {
+      final token = Provider.of<AuthProvider>(context, listen: false).token;
+      if (token == null || token.isEmpty) {
+        throw Exception('未登录，请先登录');
+      }
+      _currentDetection = await _apiService.uploadSingleImage(image, _selectedModel!, _selectedCategories, token);
+      _history.insert(0, _currentDetection!);
+      _filteredHistory = _history;
+    } catch (e) {
+      print('上传单张图片失败: $e');
+      rethrow;
+    }
+    notifyListeners();
+  }
+
+  Future<void> uploadBatchImages(BuildContext context, List<File> images) async {
+    if (_selectedModel == null) throw Exception('未选择模型');
+    try {
+      final token = Provider.of<AuthProvider>(context, listen: false).token;
+      if (token == null || token.isEmpty) {
+        throw Exception('未登录，请先登录');
+      }
+      final detections = await _apiService.uploadBatchImages(images, _selectedModel!, _selectedCategories, token);
+      _history.insertAll(0, detections);
+      _filteredHistory = _history;
+      _currentDetection = detections.isNotEmpty ? detections.first : null;
+    } catch (e) {
+      print('上传批量图片失败: $e');
+      rethrow;
+    }
+    notifyListeners();
+  }
+
+  Future<void> downloadResult(BuildContext context, Detection detection) async {
+    try {
+      final token = Provider.of<AuthProvider>(context, listen: false).token;
+      if (token == null || token.isEmpty) {
+        throw Exception('未登录，请先登录');
+      }
+      await _apiService.downloadResult(detection, token);
+    } catch (e) {
+      print('下载结果失败: $e');
+    }
     notifyListeners();
   }
 }

@@ -1,0 +1,24 @@
+E:\CraftAI app\CraftAI\App\backend\backend\
+├── .env                    # 环境变量
+├── app_run.py              # Flask 应用入口
+├── config.py               # 配置
+├── requirements.txt        # 依赖
+├── Uploads/                # 上传图片存储
+├── Reports/                # 报告 PDF 存储
+├── app/
+│   ├── __init__.py         # 包初始化
+│   ├── models/
+│   │   ├── base.py         # 数据库模型（User, Detection, Report）
+│   │
+│   │   ├── best.pt         # YOLO 模型文件
+│   ├── routes/
+│   │   ├── auth.py         # 认证（注册、登录）
+│   │   ├── defect.py       # 检测（预测、历史、下载）
+│   │   ├── report.py       # 报告生成与下载（新增）
+│   ├── services/
+│   │   ├── database.py     # 数据库操作
+│   │   ├── storage.py      # 文件存储
+│   │   ├── report.py       # 报告生成（PDF）（新增）
+│   │   ├── visualizer.py   # 检测结果可视化（标注图片）（新增）
+│   ├── SQL/
+│   │   ├── init_db.py      # 数据库初始化

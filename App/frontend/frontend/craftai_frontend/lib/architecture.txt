@@ -1,0 +1,38 @@
+craftai_frontend/
+├── lib/
+│   ├── main.dart
+│   ├── pages/
+│   │   ├── login_page.dart
+│   │   ├── register_page.dart
+│   │   ├── dashboard_page.dart
+│   │   ├── upload_page.dart
+│   │   ├── history_page.dart
+│   │   ├── report_page.dart
+│   │   ├── settings_page.dart
+│   │   ├── profile_page.dart
+│   │   ├── detection_page.dart
+│   ├── providers/
+│   │   ├── auth_provider.dart
+│   │   ├── detection_provider.dart
+│   │   ├── report_provider.dart
+│   ├── services/
+│   │   ├── api_service.dart
+│   │   ├── gpt_service.dart
+│   ├── models/
+│   │   ├── detection.dart
+│   │   ├── model_config.dart
+│   │   ├── report.dart
+│   │   ├── user.dart
+│   ├── widgets/
+│   │   ├── app_drawer.dart
+│   │   ├── feature_card.dart
+│   │   ├── model_selector.dart
+│   │   ├── category_selector.dart
+│   ├── utils/
+│   │   ├── constants.dart
+│   │   ├── helpers.dart
+│   ├── theme/
+│   │   ├── app_theme.dart
+├── assets/
+│   ├── logo.png
+├── pubspec.yaml
