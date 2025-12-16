@@ -14,12 +14,12 @@ class AppDrawer extends StatelessWidget {
           DrawerHeader(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
                 colors: [
                   Theme.of(context).primaryColor,
                   Theme.of(context).colorScheme.secondary,
                 ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
             child: Column(
@@ -33,18 +33,19 @@ class AppDrawer extends StatelessWidget {
                   style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const Text(
-                  '古建筑修复平台',
+                  '古建修复',
                   style: TextStyle(color: Colors.white70, fontSize: 14),
                 ),
               ],
             ),
           ),
-          _buildDrawerItem(context, icon: Icons.dashboard, title: '仪表盘', route: '/dashboard'),
-          _buildDrawerItem(context, icon: Icons.upload, title: '上传图片', route: '/upload'),
+          _buildDrawerItem(context, icon: Icons.dashboard, title: '仪表板', route: '/dashboard'),
+          _buildDrawerItem(context, icon: Icons.upload, title: '图片检测', route: '/upload'),
           _buildDrawerItem(context, icon: Icons.history, title: '检测历史', route: '/history'),
           _buildDrawerItem(context, icon: Icons.description, title: '生成报告', route: '/report'),
+          _buildDrawerItem(context, icon: Icons.person, title: '个人资料', route: '/profile_page'),
           _buildDrawerItem(context, icon: Icons.settings, title: '设置', route: '/settings'),
-          _buildDrawerItem(context, icon: Icons.person, title: '个人资料', route: '/profile'),
+          _buildDrawerItem(context, icon: Icons.info, title: '关于匠知', route: '/about'),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.redAccent),
@@ -59,21 +60,15 @@ class AppDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildDrawerItem(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String route,
-  }) {
+  Widget _buildDrawerItem(BuildContext context, {required IconData icon, required String title, required String route}) {
     final isSelected = ModalRoute.of(context)?.settings.name == route;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      curve: Curves.easeInOut,
       color: isSelected ? Theme.of(context).primaryColor.withOpacity(0.1) : null,
       child: ListTile(
         leading: Icon(
           icon,
-          color: isSelected ? Theme.of(context).primaryColor : Colors.grey,
+          color: isSelected ? Theme.of(context).primaryColor : Colors.grey[800],
         ),
         title: Text(
           title,

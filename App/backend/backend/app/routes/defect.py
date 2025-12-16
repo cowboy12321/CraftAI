@@ -4,6 +4,7 @@ from ..services.model_runner import run_yolo
 from ..services.database import save_detection
 from ..services.visualizer import annotate_image
 from ..models.base import define_models
+from ..services.storage import save_file
 from config import Config
 import os
 import json
@@ -30,23 +31,14 @@ def predict():
         return jsonify({'error': '仅支持 JPG 或 PNG 格式'}), 400
 
     try:
-        logger.debug(f"上传目录: {Config.UPLOAD_FOLDER}")
-        os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
-        filename = f"{user_id}_{file.filename}"
-        file_path = os.path.join(Config.UPLOAD_FOLDER, filename)
-        logger.debug(f"保存图片到: {file_path}")
-        file.save(file_path)
+        image_url = save_file(file, user_id)
+        file_path = os.path.join(Config.UPLOAD_FOLDER, os.path.basename(image_url))
 
-        if not os.path.exists(file_path):
-            logger.error(f"图片保存失败: {file_path}")
-            return jsonify({'error': '图片保存失败'}), 500
-
-        image_url = f"/Uploads/{filename}"
         logger.debug(f"运行 YOLO 预测: {file_path}")
         results = run_yolo(file_path)
         logger.debug(f"YOLO 预测结果: {results}")
 
-        annotated_filename = f"annotated_{filename}"
+        annotated_filename = f"annotated_{os.path.basename(image_url)}"
         annotated_path = os.path.join(Config.UPLOAD_FOLDER, annotated_filename)
         logger.debug(f"生成标注图片: {annotated_path}")
         annotate_image(file_path, results['coordinates'], annotated_path)
@@ -65,7 +57,7 @@ def predict():
             'annotated_image_url': annotated_image_url,
             'material_lost': detection.material_lost,
             'severity': detection.severity,
-            'coordinates': json.loads(detection.coordinates) if detection.coordinates else [],
+            'coordinates': detection.coordinates if detection.coordinates else '[]',  # 保持字符串
             'defect_types': results['defect_types'],
             'summary': detection.summary,
             'timestamp': detection.timestamp.isoformat()
@@ -97,42 +89,43 @@ def detect_batch():
         detections = []
 
         for file in files:
-            filename = f"{user_id}_{file.filename}"
-            file_path = os.path.join(Config.UPLOAD_FOLDER, filename)
-            logger.debug(f"保存批量图片到: {file_path}")
-            file.save(file_path)
+            if not file.filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+                logger.warning(f"批量检测失败：不支持的文件格式 {file.filename}")
+                continue
+            image_url = save_file(file, user_id)
+            file_path = os.path.join(Config.UPLOAD_FOLDER, os.path.basename(image_url))
 
-            if not os.path.exists(file_path):
-                logger.error(f"图片保存失败: {file_path}")
-                return jsonify({'error': '图片保存失败'}), 500
-
-            image_url = f"/Uploads/{filename}"
             logger.debug(f"运行 YOLO 预测: {file_path}")
             results = run_yolo(file_path)
             logger.debug(f"YOLO 预测结果: {results}")
 
-            annotated_filename = f"annotated_{filename}"
+            annotated_filename = f"annotated_{os.path.basename(image_url)}"
             annotated_path = os.path.join(Config.UPLOAD_FOLDER, annotated_filename)
             logger.debug(f"生成标注图片: {annotated_path}")
             annotate_image(file_path, results['coordinates'], annotated_path)
             if not os.path.exists(annotated_path):
                 logger.error(f"标注图片生成失败: {annotated_path}")
-                return jsonify({'error': '标注图片生成失败'}), 500
+                continue
 
             annotated_image_url = f"/Uploads/{annotated_filename}"
             logger.debug(f"保存检测记录到数据库")
-            detection = save_detection(user_id, image_url, results, results.get('summary', '暂无摘要'), annotated_image_url)
+            detection = save_detection(user_id, image_url, results, results.get('summary', '暂无摘要'),
+                                       annotated_image_url)
             detections.append({
                 'id': detection.id,
                 'image_url': image_url,
                 'annotated_image_url': annotated_image_url,
                 'material_lost': detection.material_lost,
                 'severity': detection.severity,
-                'coordinates': json.loads(detection.coordinates) if detection.coordinates else [],
+                'coordinates': detection.coordinates if detection.coordinates else '[]',  # 保持字符串
                 'defect_types': results['defect_types'],
                 'summary': detection.summary,
                 'timestamp': detection.timestamp.isoformat()
             })
+
+        if not detections:
+            logger.warning("批量检测失败：无有效图片处理")
+            return jsonify({'error': '无有效图片处理'}), 400
 
         logger.info(f"用户 {user_id} 批量检测完成，检测数量: {len(detections)}")
         return jsonify(detections), 200
@@ -165,10 +158,10 @@ def history():
     return jsonify([{
         'id': d.id,
         'image_url': d.image_url,
-        'annotated_image_url': d.annotated_image_url,
+        'annotated_image_url': d.annotated_image_url or '',
         'material_lost': d.material_lost,
         'severity': d.severity,
-        'coordinates': json.loads(d.coordinates) if d.coordinates else [],
+        'coordinates': d.coordinates if d.coordinates else '[]',  # 保持字符串
         'summary': d.summary,
         'timestamp': d.timestamp.isoformat()
     } for d in detections]), 200
@@ -195,7 +188,7 @@ def get_detection(detection_id):
         'annotated_image_url': detection.annotated_image_url,
         'material_lost': detection.material_lost,
         'severity': detection.severity,
-        'coordinates': json.loads(detection.coordinates) if detection.coordinates else [],
+        'coordinates': detection.coordinates if detection.coordinates else '[]',  # 保持字符串
         'summary': detection.summary,
         'timestamp': detection.timestamp.isoformat()
     }), 200
@@ -236,7 +229,7 @@ def statistics():
     defect_types = db.session.query(Detection.coordinates).filter_by(user_id=user_id).all()
     defect_type_counts = {}
     for coords in defect_types:
-        coords_list = json.loads(coords) if coords else []
+        coords_list = json.loads(coords[0]) if coords[0] else []  # 修改为 coords[0]
         for coord in coords_list:
             defect_type = coord.get('class', '未知')
             defect_type_counts[defect_type] = defect_type_counts.get(defect_type, 0) + 1

@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: jiangzhi_db
+    restart: always
+    environment:
+      POSTGRES_USER: jiangzhi_user
+      POSTGRES_PASSWORD: jiangzhi_pass
+      POSTGRES_DB: jiangzhi_db
+    volumes:
+      - ./db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jiangzhi_user -d jiangzhi_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./App/backend
+      dockerfile: Dockerfile
+    container_name: jiangzhi_backend
+    restart: always
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./App/backend/backend:/app/backend
+      - ./App/backend/backend/Uploads:/app/backend/Uploads
+      - ./App/backend/backend/Reports:/app/backend/Reports
+      - ./App/backend/backend/.env:/app/backend/.env
+    environment:
+      - DATABASE_URL=postgresql://jiangzhi_user:jiangzhi_pass@db:5432/jiangzhi_db
+      - FLASK_APP=app_run.py
+    depends_on:
+      db:
+        condition: service_healthy
+    working_dir: /app/backend
+    command: ["python", "app_run.py"]
+
+networks:
+  default:
+    driver: bridge

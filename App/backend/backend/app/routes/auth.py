@@ -57,7 +57,7 @@ def login():
 
         user = User.query.filter_by(username=username).first()
         if user and check_password_hash(user.password, password):
-            access_token = create_access_token(identity=user.id)
+            access_token = create_access_token(identity=str(user.id))
             logger.info(f"用户 {username} 登录成功")
             return jsonify({
                 'user_id': user.id,

@@ -5,7 +5,8 @@ class FeatureCard extends StatefulWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  final double width;
+  // 移除 width 参数，因为在 GridView 中它会自动填充
+  // final double width; 
 
   const FeatureCard({
     super.key,
@@ -13,7 +14,7 @@ class FeatureCard extends StatefulWidget {
     required this.icon,
     required this.color,
     required this.onTap,
-    required this.width,
+    // required this.width, // 删除这行
   });
 
   @override
@@ -54,8 +55,8 @@ class _FeatureCardState extends State<FeatureCard> with SingleTickerProviderStat
       child: ScaleTransition(
         scale: _scaleAnimation,
         child: Card(
+          // 移除固定的 width，改用 Container 或直接让 Card 自适应
           child: Container(
-            width: widget.width,
             padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
               color: widget.color.withOpacity(0.1),

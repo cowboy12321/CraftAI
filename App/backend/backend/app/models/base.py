@@ -27,7 +27,7 @@ def define_models(db):
             coordinates = db.Column(db.Text)
             summary = db.Column(db.Text)
             timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-            annotated_image_url = db.Column(db.String(255))  # 带标注的图片
+            annotated_image_url = db.Column(db.String(255), nullable=True)  # 带标注的图片
         db._detection_model = Detection
     else:
         Detection = db._detection_model

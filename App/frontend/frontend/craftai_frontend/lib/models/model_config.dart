@@ -15,7 +15,7 @@ class ModelConfig {
 
   static List<ModelConfig> getAvailableModels() {
     return [
-      ModelConfig(name: 'yolov11s-seg', path: 'path/to/yolov11s'),
+      ModelConfig(name: 'yolov11s', path: 'path/to/yolov11s'),
       ModelConfig(name: 'yolov11m-seg', path: 'path/to/yolov11m'),
       ModelConfig(name: 'yolov11l-seg', path: 'path/to/yolov11l'),
     ];

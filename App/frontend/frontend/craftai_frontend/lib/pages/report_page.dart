@@ -2,21 +2,95 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/detection_provider.dart';
 import '../providers/report_provider.dart';
+import '../models/detection.dart';
+import '../models/report.dart';
 import '../widgets/app_drawer.dart';
 
-class ReportPage extends StatelessWidget {
-  const ReportPage({super.key});
+class ReportPage extends StatefulWidget {
+  final Detection? detection;
+  const ReportPage({super.key, this.detection});
+
+  @override
+  _ReportPageState createState() => _ReportPageState();
+}
+
+class _ReportPageState extends State<ReportPage> {
+  bool isLoading = false;
+  String? errorMessage;
+  List<Report> _reports = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReports();
+  }
+
+  Future<void> _loadReports() async {
+    final detection = widget.detection ?? context.read<DetectionProvider>().currentDetection;
+    if (detection != null) {
+      try {
+        final reports = await context.read<ReportProvider>().loadReports(detection.id);
+        setState(() {
+          _reports = reports;
+        });
+      } catch (e) {
+        setState(() {
+          errorMessage = '加载报告失败: $e';
+        });
+      }
+    } else {
+      setState(() {
+        errorMessage = '未找到检测数据';
+      });
+    }
+  }
+
+  Future<void> _generateReport(Detection detection) async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      await context.read<ReportProvider>().generateReport(detection);
+      await _loadReports();
+    } catch (e) {
+      setState(() {
+        errorMessage = '报告生成失败: $e';
+      });
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _downloadReport(Report report) async {
+    try {
+      final file = await context.read<ReportProvider>().downloadReport(report.id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('报告保存至: ${file.path}'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('保存失败: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final detectionProvider = Provider.of<DetectionProvider>(context);
-    final reportProvider = Provider.of<ReportProvider>(context);
-    final theme = Theme.of(context);
-
+    final detection = widget.detection ?? context.read<DetectionProvider>().currentDetection;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('生成报告', style: TextStyle(fontSize: 20, color: Colors.white)),
-        backgroundColor: theme.primaryColor,
+        title: const Text('智能检测报告', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: const Color(0xFF8B4513),
         elevation: 4,
       ),
       drawer: const AppDrawer(),
@@ -24,114 +98,129 @@ class ReportPage extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              const Color(0xFF8B4513).withOpacity(0.8),
+              const Color(0xFF8B4513).withOpacity(0.1),
               const Color(0xFFF5F5F5),
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
         ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 标题
-              Text(
-                '检测报告',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: theme.primaryColor,
+        padding: const EdgeInsets.all(16.0),
+        child: isLoading
+            ? _buildLoading()
+            : errorMessage != null
+                ? _buildError()
+                : _buildReportList(detection),
+      ),
+    );
+  }
+
+  Widget _buildLoading() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 20),
+          Text('正在生成报告...', style: TextStyle(fontSize: 18)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error, color: Colors.red, size: 60),
+          const SizedBox(height: 20),
+          Text(errorMessage!, style: const TextStyle(fontSize: 18, color: Colors.red)),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: widget.detection != null ? () => _generateReport(widget.detection!) : null,
+            child: const Text('重试'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReportList(Detection? detection) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Card(
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                const Text('检测报告', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                Text(
+                  '检测编号: #${detection?.id.toString().padLeft(8, '0') ?? '未知'}',
+                  style: const TextStyle(fontSize: 16),
                 ),
-              ),
-              const SizedBox(height: 20),
-              // 选择检测
-              if (detectionProvider.currentDetection == null)
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Text('请先选择一个检测记录', style: TextStyle(fontSize: 16, color: Colors.red)),
-                  ),
-                )
-              else
-                Card(
-                  child: ListTile(
-                    title: Text('检测 #${detectionProvider.currentDetection!.id}'),
-                    subtitle: Text('时间: ${detectionProvider.currentDetection!.timestamp}'),
-                    trailing: reportProvider.isGenerating
-                        ? const CircularProgressIndicator()
-                        : ElevatedButton(
-                            onPressed: () async {
-                              try {
-                                await reportProvider.generateReport(detectionProvider.currentDetection!);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('报告生成成功')),
-                                );
-                              } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('生成失败: $e')),
-                                );
-                              }
-                            },
-                            child: const Text('生成报告'),
-                          ),
-                  ),
-                ),
-              const SizedBox(height: 20),
-              // 报告内容
-              if (reportProvider.currentReport != null)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '报告 ID: ${reportProvider.currentReport!.id}',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        Text('检测 ID: ${reportProvider.currentReport!.detectionId}'),
-                        Text('时间: ${reportProvider.currentReport!.timestamp}'),
-                        const SizedBox(height: 16),
-                        const Text(
-                          '报告内容',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(reportProvider.currentReport!.content),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () async {
-                            try {
-                              await reportProvider.downloadReport();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('报告下载成功')),
-                              );
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('下载失败: $e')),
-                              );
-                            }
-                          },
-                          child: const Text('下载报告'),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Text('暂无报告', style: TextStyle(fontSize: 16)),
-                  ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: detection != null ? () => _generateReport(detection) : null,
+          child: const Text('生成新报告', style: TextStyle(fontSize: 18)),
+        ),
+        const SizedBox(height: 20),
+        Expanded(
+          child: _reports.isEmpty
+              ? const Center(child: Text('暂无报告', style: TextStyle(fontSize: 18)))
+              : ListView.builder(
+                  itemCount: _reports.length,
+                  itemBuilder: (context, index) {
+                    final report = _reports[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 16.0),
+                      child: ListTile(
+                        title: Text(
+                          '报告 #${report.id}',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          '生成时间: ${report.timestamp}',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.download, color: Color(0xFF8B4513)),
+                          onPressed: () => _downloadReport(report),
+                        ),
+                        onTap: () {
+                          context.read<ReportProvider>().setCurrentReport(report);
+                          showDialog(
+                            context: context,
+                            builder: (dialogContext) => AlertDialog(
+                              title: Text('报告 #${report.id}'),
+                              content: SingleChildScrollView(
+                                child: Text(
+                                  report.content,
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext),
+                                  child: const Text('关闭'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 }

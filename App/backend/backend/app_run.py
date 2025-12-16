@@ -23,7 +23,20 @@ load_dotenv()
 
 # 创建应用
 app = create_app()
+def ensure_directories():
+    for folder in [app.config['UPLOAD_FOLDER'], app.config['REPORT_FOLDER']]:
+        try:
+            os.makedirs(folder, exist_ok=True)
+            if not os.access(folder, os.W_OK):
+                logger.error(f"目录 {folder} 不可写")
+                raise PermissionError(f"目录 {folder} 不可写")
+            logger.info(f"目录 {folder} 已准备好")
+        except Exception as e:
+            logger.error(f"创建目录 {folder} 失败: {str(e)}")
+            raise
 
+with app.app_context():
+    ensure_directories()
 # 初始化异步任务调度器
 scheduler = APScheduler()
 scheduler.init_app(app)

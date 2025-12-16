@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'theme/app_theme.dart';
+// 引入所有页面
 import 'pages/login_page.dart';
 import 'pages/register_page.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/upload_page.dart';
 import 'pages/history_page.dart';
+import 'pages/report_page.dart';
 import 'pages/detection_page.dart';
 import 'pages/settings_page.dart';
+import 'pages/profile_page.dart';
 import 'pages/about_page.dart';
-import 'pages/report_page.dart';
+// 引入 Providers
 import 'providers/auth_provider.dart';
 import 'providers/detection_provider.dart';
 import 'providers/report_provider.dart';
-import 'services/gpt_service.dart';
 
 void main() {
   runApp(
@@ -33,27 +36,10 @@ class CraftAIApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '匠知 - CraftAI',
-      theme: ThemeData(
-        primaryColor: const Color(0xFF8B4513),
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF8B4513)),
-        scaffoldBackgroundColor: const Color(0xFFF5F5F5),
-        cardTheme: CardTheme(
-          elevation: 6,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          color: Colors.white,
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF8B4513),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ),
-        useMaterial3: true,
-      ),
+      title: '匠知 - 古建筑智能检测平台',
+      debugShowCheckedModeBanner: false,
+      // 使用在 theme/app_theme.dart 中定义的专业主题
+      theme: AppTheme.professionalTheme, 
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginPage(),
@@ -62,9 +48,19 @@ class CraftAIApp extends StatelessWidget {
         '/upload': (context) => const UploadPage(),
         '/history': (context) => const HistoryPage(),
         '/detection': (context) => const DetectionPage(),
-        '/settings': (context) => const SettingsPage(),
         '/report': (context) => const ReportPage(),
+        '/settings': (context) => const SettingsPage(),
         '/about': (context) => const AboutPage(),
+        // ProfilePage 需要传入 userId，我们这里通过 AuthProvider 获取，或在跳转时传入
+        // 为了路由表简单，这里使用 Provider 获取当前 ID
+        '/profile_page': (context) {
+          final auth = Provider.of<AuthProvider>(context, listen: false);
+          return ProfilePage(userId: auth.userId ?? 0);
+        },
+      },
+      // 处理未知道路由
+      onUnknownRoute: (settings) {
+        return MaterialPageRoute(builder: (_) => const LoginPage());
       },
     );
   }

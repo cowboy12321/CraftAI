@@ -13,253 +13,274 @@ class UploadPage extends StatefulWidget {
 }
 
 class _UploadPageState extends State<UploadPage> {
-  bool isSingleImage = true;
   File? _selectedImage;
+  File? _processedImage;
   final ImagePicker _picker = ImagePicker();
-  final Set<String> _selectedTypes = {};
+  // 默认全选，避免用户忘记选
+  final Set<String> _selectedTypes = {'色差', '表面剥落', '过大缝隙', '水渍'};
+  bool _isProcessing = false;
 
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
       setState(() {
         _selectedImage = File(image.path);
+        _processedImage = null;
       });
     }
   }
 
   Future<void> _processImage() async {
     if (_selectedImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先选择图片')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请先选择图片')));
       return;
     }
     if (_selectedTypes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请至少选择一种检测类型')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请至少选择一种检测类型')));
       return;
     }
-    
+
+    setState(() => _isProcessing = true);
+
     try {
       final provider = Provider.of<DetectionProvider>(context, listen: false);
+      provider.setCategories(_selectedTypes.toList());
       await provider.uploadSingleImage(context, _selectedImage!);
-      Navigator.pushNamed(context, '/detection');
+      setState(() {
+        _processedImage = provider.processedImage;
+      });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('处理失败: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('错误: $e')));
+    } finally {
+      setState(() => _isProcessing = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
+    
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('图片检测', style: TextStyle(fontSize: 20, color: Colors.white)),
-        backgroundColor: theme.primaryColor,
-        elevation: 4,
-      ),
+      appBar: AppBar(title: const Text('智能病害检测')),
       drawer: const AppDrawer(),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 第一行：标题
-                Text(
-                  isSingleImage ? '单张图片检测' : '批量图片检测',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: theme.primaryColor,
+      body: Container(
+        color: Colors.grey[100], // 浅灰背景
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // 响应式断点：宽度大于 900 则使用左右分栏
+            bool isWide = constraints.maxWidth > 900;
+
+            if (isWide) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 左侧：图片预览区 (占 65%)
+                  Expanded(
+                    flex: 65,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: _buildImageArea(theme),
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 30),
-
-                // 第二行：单张/批量选择
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ChoiceChip(
-                      label: const Text('单张'),
-                      selected: isSingleImage,
-                      selectedColor: theme.primaryColor,
-                      labelStyle: TextStyle(
-                        color: isSingleImage ? Colors.white : Colors.black87,
+                  // 右侧：控制面板区 (占 35%)
+                  Expanded(
+                    flex: 35,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(-5, 0))
+                        ],
                       ),
-                      onSelected: (selected) {
-                        setState(() {
-                          isSingleImage = true;
-                          _selectedImage = null;
-                        });
-                      },
+                      padding: const EdgeInsets.all(32.0),
+                      child: _buildControlPanel(theme),
                     ),
-                    const SizedBox(width: 20),
-                    ChoiceChip(
-                      label: const Text('批量'),
-                      selected: !isSingleImage,
-                      selectedColor: theme.primaryColor,
-                      labelStyle: TextStyle(
-                        color: !isSingleImage ? Colors.white : Colors.black87,
+                  ),
+                ],
+              );
+            } else {
+              // 窄屏：上下滚动布局
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _buildImageArea(theme),
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
                       ),
-                      onSelected: (selected) {
-                        setState(() {
-                          isSingleImage = false;
-                          _selectedImage = null;
-                        });
-                      },
+                      child: _buildControlPanel(theme),
                     ),
                   ],
                 ),
-                const SizedBox(height: 30),
-
-                // 第三行：检测类型
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 4,
-                  childAspectRatio: 1.5,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  children: [
-                    _buildDetectionTypeCard('裂缝', Icons.crop_square),
-                    _buildDetectionTypeCard('变色与沉积物', Icons.color_lens),
-                    _buildDetectionTypeCard('表面剥落', Icons.texture),
-                    _buildDetectionTypeCard('泛碱', Icons.water_damage),
-                    _buildDetectionTypeCard('不当修补', Icons.build),
-                    _buildDetectionTypeCard('生物入侵', Icons.grass),
-                    _buildDetectionTypeCard('砖缝失效', Icons.border_clear),
-                    _buildDetectionTypeCard('其他', Icons.more_horiz),
-                  ],
-                ),
-                const SizedBox(height: 30),
-
-                // 第四行：图片显示区域
-                Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: _pickImage,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Column(
-                          children: [
-                            const Text('原始图像', style: TextStyle(fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 10),
-                            Container(
-                              height: 200,
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: _selectedImage != null
-                                  ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Image.file(
-                                        _selectedImage!,
-                                        fit: BoxFit.cover,
-                                        width: double.infinity,
-                                      ),
-                                    )
-                                  : const Center(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.add_photo_alternate, size: 50, color: Colors.grey),
-                                          Text('点击上传图片', style: TextStyle(color: Colors.grey)),
-                                        ],
-                                      ),
-                                    ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: InkWell(
-                        onTap: _processImage,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Column(
-                          children: [
-                            const Text('处理图像', style: TextStyle(fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 10),
-                            Container(
-                              height: 200,
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: _selectedImage != null
-                                  ? const Center(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.image_search, size: 50, color: Colors.grey),
-                                          Text('点击处理图片', style: TextStyle(color: Colors.grey)),
-                                        ],
-                                      ),
-                                    )
-                                  : const Center(
-                                      child: Text('请先上传图片', style: TextStyle(color: Colors.grey)),
-                                    ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+              );
+            }
+          },
         ),
       ),
     );
   }
 
-Widget _buildDetectionTypeCard(String title, IconData icon) {
-  final isSelected = _selectedTypes.contains(title);
-  return Card(
-    elevation: 3,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(10),
-    ),
-    color: isSelected ? Colors.brown : null,
-    child: InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: () {
-        setState(() {
-          if (isSelected) {
-            _selectedTypes.remove(title);
-          } else {
-            _selectedTypes.add(title);
-          }
-        });
-      },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 30, color: isSelected ? Colors.white : Colors.brown),
-          const SizedBox(height: 8),
-          Text(
-            title, 
-            textAlign: TextAlign.center, 
-            style: TextStyle(
-              fontSize: 12,
-              color: isSelected ? Colors.white : Colors.black, // 关键修改：根据选中状态设置文字颜色
+  // 构建图片展示区域
+  Widget _buildImageArea(ThemeData theme) {
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              // 原图
+              Expanded(child: _buildImageBox("原始图像", _selectedImage, false)),
+              if (_processedImage != null) ...[
+                const SizedBox(width: 20),
+                const Icon(Icons.arrow_forward, color: Colors.grey),
+                const SizedBox(width: 20),
+                // 结果图
+                Expanded(child: _buildImageBox("AI 标注结果", _processedImage, true)),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImageBox(String title, File? file, bool isResult) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
+        const SizedBox(height: 12),
+        Expanded(
+          child: InkWell(
+            onTap: isResult ? null : _pickImage, // 点击原图框也可上传
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isResult ? Colors.green.withOpacity(0.5) : Colors.grey.withOpacity(0.3), width: 2),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+              ),
+              child: file == null
+                  ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_photo_alternate_outlined, size: 64, color: Colors.grey[400]),
+                        const SizedBox(height: 16),
+                        Text('点击上传图片', style: TextStyle(color: Colors.grey[500], fontSize: 16)),
+                      ],
+                    )
+                  : ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.file(file, fit: BoxFit.contain),
+                    ),
             ),
           ),
-        ],
-      ),
-    ),
-  );
-}
+        ),
+      ],
+    );
+  }
+
+  // 构建右侧控制面板
+  Widget _buildControlPanel(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("参数配置", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: theme.primaryColor)),
+        const SizedBox(height: 32),
+        
+        const Text("1. 选择检测病害类型", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: ['色差', '表面剥落', '过大缝隙', '水渍'].map((type) {
+            final isSelected = _selectedTypes.contains(type);
+            return FilterChip(
+              label: Text(type),
+              selected: isSelected,
+              showCheckmark: false,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.white : Colors.black87,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+              backgroundColor: Colors.grey[100],
+              selectedColor: theme.primaryColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12), // 加大触控区
+              onSelected: (bool selected) {
+                setState(() {
+                  if (selected) {
+                    _selectedTypes.add(type);
+                  } else {
+                    _selectedTypes.remove(type);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 40),
+        
+        const Text("2. 执行操作", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 16),
+        
+        // 按钮组 - 垂直排列，大尺寸
+        SizedBox(
+          width: double.infinity,
+          height: 56, // 加高按钮
+          child: ElevatedButton.icon(
+            onPressed: _pickImage,
+            icon: const Icon(Icons.upload_file),
+            label: const Text("重新上传图片"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey[200],
+              foregroundColor: Colors.black87,
+              elevation: 0,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: ElevatedButton.icon(
+            onPressed: _isProcessing ? null : _processImage,
+            icon: _isProcessing 
+              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+              : const Icon(Icons.analytics_outlined),
+            label: Text(_isProcessing ? "正在智能分析..." : "开始检测"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.primaryColor,
+              foregroundColor: Colors.white,
+              elevation: 4,
+              shadowColor: theme.primaryColor.withOpacity(0.4),
+            ),
+          ),
+        ),
+
+        const Spacer(), // 将详情按钮顶到底部
+        
+        if (_processedImage != null)
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.pushNamed(context, '/detection'),
+              icon: const Icon(Icons.visibility),
+              label: const Text("查看完整报告"),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: theme.primaryColor, width: 2),
+                foregroundColor: theme.primaryColor,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }
