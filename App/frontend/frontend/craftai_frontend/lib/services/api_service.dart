@@ -2,19 +2,19 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
+import 'package:http_parser/http_parser.dart'; 
 import '../models/detection.dart';
 import '../models/report.dart';
 import '../models/model_config.dart';
 import '../utils/constants.dart';
-import 'package:http_parser/http_parser.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ApiService {
-  // 单例模式：确保全局使用同一个实例，从而共享 Token
+  // 单例模式：确保全局共享 Token
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
   ApiService._internal();
 
-  // 内存中存储 Token
   String? _token;
 
   // 辅助函数：获取带 Token 的 Header
@@ -26,6 +26,8 @@ class ApiService {
     return headers;
   }
 
+  // ==================== 用户认证 ====================
+
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
       final response = await http.post(
@@ -36,9 +38,8 @@ class ApiService {
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // 【关键修复】保存 Token
-        _token = data['token']; 
-        print("登录成功，Token已保存: ${_token?.substring(0, 10)}...");
+        _token = data['token']; // 保存 Token
+        print("登录成功");
         return data;
       }
       throw Exception('登录失败: ${response.body}');
@@ -63,43 +64,71 @@ class ApiService {
     }
   }
 
+  Future<void> changePassword(int userId, String newPassword) async {
+    if (_token == null) throw Exception('未登录');
+    // 注意：需确认后端是否有此接口，此处为预留实现
+    // 如果后端暂未实现 /api/change_password，调用此方法会报错 404
+    /*
+    final response = await http.post(
+      Uri.parse('$BASE_URL/api/change_password'),
+      headers: _headers,
+      body: jsonEncode({'user_id': userId, 'new_password': newPassword}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('修改密码失败: ${response.body}');
+    }
+    */
+    print("修改密码接口待后端实现");
+  }
+
+  // ==================== 检测相关 ====================
+
   Future<List<Detection>> getDetectionHistory() async {
-    // 检查 Token 是否存在
-    if (_token == null) throw Exception('未登录或Token已过期');
+    if (_token == null) throw Exception('未登录');
 
     try {
       final response = await http.get(
         Uri.parse('$BASE_URL/api/detection/history'),
-        headers: _headers, // 【关键修复】注入 Header
+        headers: _headers,
       );
       
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => Detection.fromJson(json)).toList();
       }
-      throw Exception('获取历史记录失败: ${response.body}');
+      throw Exception('获取历史失败: ${response.body}');
     } catch (e) {
-      print('获取历史记录错误: $e');
+      print('获取历史错误: $e');
       rethrow;
     }
   }
 
-  Future<Detection> uploadSingleImage(File image, ModelConfig model, List<String> categories) async {
+  Future<Detection> getDetectionById(int id) async {
+    if (_token == null) throw Exception('未登录');
+    final response = await http.get(
+      Uri.parse('$BASE_URL/api/detection/$id'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      return Detection.fromJson(jsonDecode(response.body));
+    }
+    throw Exception('获取检测详情失败');
+  }
+
+  Future<Detection> uploadSingleImage(XFile image, ModelConfig model, List<String> categories) async {
     if (_token == null) throw Exception('未登录');
 
     try {
       var request = http.MultipartRequest('POST', Uri.parse('$BASE_URL/api/detection/single'));
-      
-      // 添加 Header
-      request.headers.addAll({
-        'Authorization': 'Bearer $_token',
-      });
+      request.headers['Authorization'] = 'Bearer $_token';
 
-      // 对于 Web/Desktop，确保文件读取正确
-      request.files.add(await http.MultipartFile.fromPath(
+      final bytes = await image.readAsBytes();
+      
+      request.files.add(http.MultipartFile.fromBytes(
         'file', 
-        image.path,
-        contentType: MediaType('image', 'jpeg'), // 显式指定类型，防止兼容性问题
+        bytes,
+        filename: image.name, // 必须手动指定文件名
+        contentType: MediaType('image', 'jpeg'),
       ));
       
       request.fields['categories'] = jsonEncode(categories);
@@ -117,11 +146,52 @@ class ApiService {
     }
   }
 
+  // 【本次修复重点】补全批量上传方法
+  Future<List<Detection>> uploadBatchImages(List<XFile> images, ModelConfig model, List<String> categories) async {
+    if (_token == null) throw Exception('未登录');
+
+    try {
+      var request = http.MultipartRequest('POST', Uri.parse('$BASE_URL/api/detection/batch'));
+      request.headers['Authorization'] = 'Bearer $_token';
+
+      for (var image in images) {
+        // 【关键修改】同样改为字节流上传
+        final bytes = await image.readAsBytes();
+        request.files.add(http.MultipartFile.fromBytes(
+          'images', 
+          bytes,
+          filename: image.name,
+          contentType: MediaType('image', 'jpeg'),
+        ));
+      }
+
+      request.fields['categories'] = jsonEncode(categories);
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(responseBody);
+        return data.map((json) => Detection.fromJson(json)).toList();
+      }
+      throw Exception('批量上传失败 (${response.statusCode}): $responseBody');
+    } catch (e) {
+      print('批量上传错误: $e');
+      rethrow;
+    }
+  }
+
   Future<void> downloadResult(Detection detection) async {
     if (_token == null) throw Exception('未登录');
     try {
+      // 处理 URL 路径
+      String url = detection.imageUrl;
+      if (!url.startsWith('http')) {
+        url = '$BASE_URL${url.startsWith('/') ? url : '/$url'}';
+      }
+
       final response = await http.get(
-        Uri.parse('$BASE_URL${detection.imageUrl}'),
+        Uri.parse(url),
         headers: _headers,
       );
       if (response.statusCode == 200) {
@@ -136,7 +206,8 @@ class ApiService {
     }
   }
 
-  // 其他方法类似，只需添加 headers: _headers
+  // ==================== 报告相关 ====================
+
   Future<Report> generateReport(int detectionId) async {
     if (_token == null) throw Exception('未登录');
     final response = await http.post(
@@ -152,14 +223,14 @@ class ApiService {
   Future<List<Report>> getReportHistory(int detectionId) async {
     if (_token == null) throw Exception('未登录');
     final response = await http.get(
-      Uri.parse('$BASE_URL/api/report/history'), // 注意路由可能需要调整为后端实际路由
+      Uri.parse('$BASE_URL/api/report/history'), 
       headers: _headers,
     );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((json) => Report.fromJson(json)).toList();
     }
-    throw Exception('获取报告失败: ${response.body}');
+    throw Exception('获取报告历史失败: ${response.body}');
   }
 
   Future<File> downloadReportFile(int reportId) async {
@@ -174,23 +245,6 @@ class ApiService {
       await file.writeAsBytes(response.bodyBytes);
       return file;
     }
-    throw Exception('下载失败: ${response.body}');
-  }
-  
-  Future<void> changePassword(int userId, String newPassword) async {
-     if (_token == null) throw Exception('未登录');
-     // 实现略，记得带 Header
-  }
-  
-  Future<Detection> getDetectionById(int id) async {
-      if (_token == null) throw Exception('未登录');
-      final response = await http.get(
-        Uri.parse('$BASE_URL/api/detection/$id'),
-        headers: _headers,
-      );
-      if (response.statusCode == 200) {
-        return Detection.fromJson(jsonDecode(response.body));
-      }
-      throw Exception('获取失败');
+    throw Exception('下载报告失败: ${response.body}');
   }
 }

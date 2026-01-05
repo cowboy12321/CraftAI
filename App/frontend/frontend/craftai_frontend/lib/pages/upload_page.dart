@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/detection_provider.dart';
 import '../widgets/app_drawer.dart';
+import 'package:flutter/foundation.dart';
 
 class UploadPage extends StatefulWidget {
   const UploadPage({super.key});
@@ -13,8 +14,8 @@ class UploadPage extends StatefulWidget {
 }
 
 class _UploadPageState extends State<UploadPage> {
-  File? _selectedImage;
-  File? _processedImage;
+  XFile? _selectedImage;
+  XFile? _processedImage;
   final ImagePicker _picker = ImagePicker();
   // 默认全选，避免用户忘记选
   final Set<String> _selectedTypes = {'色差', '表面剥落', '过大缝隙', '水渍'};
@@ -24,7 +25,7 @@ class _UploadPageState extends State<UploadPage> {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
       setState(() {
-        _selectedImage = File(image.path);
+        _selectedImage = image;
         _processedImage = null;
       });
     }
@@ -148,7 +149,7 @@ class _UploadPageState extends State<UploadPage> {
     );
   }
 
-  Widget _buildImageBox(String title, File? file, bool isResult) {
+  Widget _buildImageBox(String title, XFile? file, bool isResult) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -176,7 +177,15 @@ class _UploadPageState extends State<UploadPage> {
                     )
                   : ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.file(file, fit: BoxFit.contain),
+                      child: kIsWeb
+                          ? Image.network(
+                              file.path, // 在 Web 上，XFile.path 是一个 blob:http://... 的网络地址
+                              fit: BoxFit.contain,
+                            )
+                          : Image.file(
+                              File(file.path), // 只有在移动端才转为 File
+                              fit: BoxFit.contain,
+                            ),
                     ),
             ),
           ),

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart'; // 新增导入
+import 'package:path_provider/path_provider.dart';
 import '../models/detection.dart';
 import '../models/model_config.dart';
 import '../services/api_service.dart';
 import '../pages/detection_page.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart'; // 用于 kIsWeb
+import '../utils/constants.dart'; // 用于获取 BASE_URL
 
 class DetectionProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -18,14 +21,14 @@ class DetectionProvider with ChangeNotifier {
     '过大缝隙',
     '水渍',
   ];
-  File? _processedImage;
+  XFile? _processedImage;
 
   List<Detection> get history => _history;
   List<Detection> get filteredHistory => _filteredHistory;
   Detection? get currentDetection => _currentDetection;
   ModelConfig? get selectedModel => _selectedModel;
   List<String> get selectedCategories => _selectedCategories;
-  File? get processedImage => _processedImage;
+  XFile? get processedImage => _processedImage;
 
   DetectionProvider() {
     _selectedModel = ModelConfig.getAvailableModels().first;
@@ -71,7 +74,7 @@ class DetectionProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> uploadSingleImage(BuildContext context, File image) async {
+  Future<void> uploadSingleImage(BuildContext context, XFile image) async {
     if (_selectedModel == null) throw Exception('未选择模型');
     try {
       showDialog(
@@ -87,10 +90,21 @@ class DetectionProvider with ChangeNotifier {
       _history.insert(0, _currentDetection!);
       _filteredHistory = _history;
 
-      // 下载处理后的图片
-      await _apiService.downloadResult(_currentDetection!);
-      final dir = await getApplicationDocumentsDirectory();
-      _processedImage = File('${dir.path}/detection_${_currentDetection!.id}.jpg');
+      // ==================== 修改开始 ====================
+      if (kIsWeb) {
+        // Web端：不下载文件，直接构造网络URL
+        String url = _currentDetection!.imageUrl;
+        if (!url.startsWith('http')) {
+           url = '$BASE_URL${url.startsWith('/') ? url : '/$url'}';
+        }
+        _processedImage = XFile(url);
+      } else {
+        // 移动端：下载文件到本地目录
+        await _apiService.downloadResult(_currentDetection!);
+        final dir = await getApplicationDocumentsDirectory();
+        _processedImage = XFile('${dir.path}/detection_${_currentDetection!.id}.jpg');
+      }
+      // ==================== 修改结束 ====================
 
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -131,7 +145,7 @@ class DetectionProvider with ChangeNotifier {
     }
   }
 
-  Future<void> uploadBatchImages(BuildContext context, List<File> images) async {
+  Future<void> uploadBatchImages(BuildContext context, List<XFile> images) async {
     if (_selectedModel == null) throw Exception('未选择模型');
     try {
       showDialog(
@@ -150,9 +164,21 @@ class DetectionProvider with ChangeNotifier {
 
       // 下载第一个检测的处理后图片（可选）
       if (_currentDetection != null) {
-        await _apiService.downloadResult(_currentDetection!);
-        final dir = await getApplicationDocumentsDirectory();
-        _processedImage = File('${dir.path}/detection_${_currentDetection!.id}.jpg');
+        // ==================== 修改开始 ====================
+        if (kIsWeb) {
+          // Web端
+          String url = _currentDetection!.imageUrl;
+          if (!url.startsWith('http')) {
+             url = '$BASE_URL${url.startsWith('/') ? url : '/$url'}';
+          }
+          _processedImage = XFile(url);
+        } else {
+          // 移动端
+          await _apiService.downloadResult(_currentDetection!);
+          final dir = await getApplicationDocumentsDirectory();
+          _processedImage = XFile('${dir.path}/detection_${_currentDetection!.id}.jpg');
+        }
+        // ==================== 修改结束 ====================
       }
 
       Navigator.pop(context);
@@ -198,7 +224,11 @@ class DetectionProvider with ChangeNotifier {
 
   Future<void> downloadResult(BuildContext context, Detection detection) async {
     try {
-      await _apiService.downloadResult(detection);
+      // 下载按钮通常需要保存到本地，Web端下载逻辑较复杂（需要创建Blob链接），
+      // 这里如果只为了演示，可以暂时对Web端不做操作或仅提示
+      if (!kIsWeb) {
+         await _apiService.downloadResult(detection);
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('下载成功')),
       );
